@@ -59,8 +59,8 @@ def main():
     # bitcoin, eos...
     ico = "eos"
     key = ""
-    ico_list = {'eos': 80}
-    last = 2 ** 31;
+    # ico_list = {'eos': 80}
+    last = 2 ** 31
     rate = 0
     while True:
         tmp = get_curr_rate()
@@ -76,13 +76,13 @@ def main():
         if price > EOS_PRICE_THRESHOLD:
             last = 2 ** 31
         if price < EOS_PRICE_THRESHOLD < last:
-            post_ifttt_webhook('your emergency event name', key, ico, price)
+            post_ifttt_webhook('ico_price_emergency', key, ico, price)
             last = price
 
         # Send a Telegram notification
         # Once we have 5 items in our ico_history send an update
         if len(ico_history) == 5:
-            post_ifttt_webhook('your update event name', key, ico,
+            post_ifttt_webhook('ico_price_update', key, ico,
                                format_ico_history(ico_history))
             # Reset the history
             ico_history = []
