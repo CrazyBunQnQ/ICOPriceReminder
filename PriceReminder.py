@@ -41,11 +41,11 @@ def post_ifttt_webhook(event, key, name, price):
 def format_ico_history(ico_history):
     rows = []
     for ico_price in ico_history:
-        # Formats the date into a string: '24.02.2018 15:09'
-        date = ico_price['date'].strftime('%d.%m.%Y %H:%M')
+        # Formats the date into a string: '2018-05-27 15:09'
+        date = ico_price['date'].strftime('%Y-%m-%d %H:%M')
         price = ico_price['price']
         # <b> (bold) tag creates bolded text
-        # 27.05.2018 15:09: <b>10123.4</b> RMB
+        # 2018-05-27 15:09: <b>10123.4</b> RMB
         row = '{}: <b>{}</b> RMB'.format(date, price)
         rows.append(row)
 
