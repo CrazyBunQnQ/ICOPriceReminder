@@ -62,7 +62,7 @@ def main():
     # bitcoin_dic = {'prices': [90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190],
     #                'i': 6,
     #                'history': []}
-    eos_dic = {'prices': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190],
+    eos_dic = {'prices': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200],
                'i': 6,
                'history': []}
     dic['eos'] = eos_dic
@@ -86,27 +86,22 @@ def main():
             if i < 1:
                 i = 1
             if ico_dic['prices'][i] > price > ico_dic['prices'][i - 1]:
-                # print('not change')
-                continue
+                print('not change')
             elif price > ico_dic['prices'][i]:
                 dic[ico]['i'] = i + 1
                 # print(price)
-                date = datetime.now()
-                dic[ico]['history'].append({'date': date, 'price': price})
-
                 # Send an emergency notification
                 post_ifttt_webhook('ico_price_emergency', ico, price, "涨")
 
             elif price < ico_dic['prices'][i - 1]:
                 dic[ico]['i'] = i - 1
                 # print(price)
-                date = datetime.now()
-                dic[ico]['history'].append({'date': date, 'price': price})
-
                 # Send an emergency notification
                 post_ifttt_webhook('ico_price_emergency', ico, price, "跌")
 
             # Send a Telegram notification
+            date = datetime.now()
+            dic[ico]['history'].append({'date': date, 'price': price})
             # Once we have 5 items in our ico history send an update
             if len(dic[ico]['history']) == 5:
                 post_ifttt_webhook('ico_price_update', ico, format_ico_history(dic[ico]['history']), "")
