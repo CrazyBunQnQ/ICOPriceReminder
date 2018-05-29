@@ -59,10 +59,14 @@ def format_ico_history(ico_history):
 def main():
     dic = {}
     # bitcoin, eos...
+    # bitcoin_dic = {'prices': [90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190],
+    #                'i': 6,
+    #                'history': []}
     eos_dic = {'prices': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190],
-               'i': 7,
+               'i': 6,
                'history': []}
     dic['eos'] = eos_dic
+    # dic['bitcoin'] = bitcoin_dic
 
     rate = 0
     while True:
@@ -77,6 +81,10 @@ def main():
             print("现在 %s 的价格为 %s 元" % (ico, price))
             ico_dic = dic[ico]
             i = ico_dic['i']
+            if i >= len(ico_dic['prices']):
+                i = len(ico_dic['prices']) - 1
+            if i < 1:
+                i = 1
             if ico_dic['prices'][i] > price > ico_dic['prices'][i - 1]:
                 # print('not change')
                 continue
@@ -89,13 +97,6 @@ def main():
                 # Send an emergency notification
                 post_ifttt_webhook('ico_price_emergency', ico, price, "涨")
 
-                # Send a Telegram notification
-                # Once we have 5 items in our ico history send an update
-                if len(dic[ico]['history']) == 5:
-                    post_ifttt_webhook('ico_price_update', ico, format_ico_history(dic[ico]['history']), "")
-                    # Reset the history
-                    dic[ico]['history'] = []
-
             elif price < ico_dic['prices'][i - 1]:
                 dic[ico]['i'] = i - 1
                 # print(price)
@@ -105,12 +106,12 @@ def main():
                 # Send an emergency notification
                 post_ifttt_webhook('ico_price_emergency', ico, price, "跌")
 
-                # Send a Telegram notification
-                # Once we have 5 items in our ico history send an update
-                if len(dic[ico]['history']) == 5:
-                    post_ifttt_webhook('ico_price_update', ico, format_ico_history(dic[ico]['history']), "")
-                    # Reset the history
-                    dic[ico]['history'] = []
+            # Send a Telegram notification
+            # Once we have 5 items in our ico history send an update
+            if len(dic[ico]['history']) == 5:
+                post_ifttt_webhook('ico_price_update', ico, format_ico_history(dic[ico]['history']), "")
+                # Reset the history
+                dic[ico]['history'] = []
 
         # Sleep for 5 minutes
         # (For testing purposes you can set it to a lower number)
