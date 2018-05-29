@@ -9,7 +9,6 @@ from datetime import datetime
 KEY = ""
 ICO_API_URL = 'https://api.coinmarketcap.com/v1/ticker/'
 IFTTT_WEBHOOKS_URL = 'https://maker.ifttt.com/trigger/{}/with/key/%s' % KEY
-EOS_PRICE_THRESHOLD = 80  # Set this to whatever you like
 
 
 def get_curr_rate(scur="USD", tcur="CNY", amount="1"):
@@ -58,7 +57,7 @@ def format_ico_history(ico_history):
 
 def main():
     dic = {}
-    # bitcoin, eos...
+    # bitcoin, eos...Set these to whatever you like
     # bitcoin_dic = {'prices': [90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190],
     #                'i': 6,
     #                'history': []}
