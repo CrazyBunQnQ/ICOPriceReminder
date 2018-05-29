@@ -5,8 +5,10 @@ import urllib.request
 import re
 from datetime import datetime
 
+# your IFTTT key
+KEY = ""
 ICO_API_URL = 'https://api.coinmarketcap.com/v1/ticker/'
-IFTTT_WEBHOOKS_URL = 'https://maker.ifttt.com/trigger/{}/with/key/{}'
+IFTTT_WEBHOOKS_URL = 'https://maker.ifttt.com/trigger/{}/with/key/%s' % KEY
 EOS_PRICE_THRESHOLD = 80  # Set this to whatever you like
 
 
@@ -29,11 +31,11 @@ def get_latest_ico_price(name="eos"):
     return float(response_json[0]['price_usd'])
 
 
-def post_ifttt_webhook(event, key, name, price):
+def post_ifttt_webhook(event, name, price, rise_and_fall):
     # The payload that will be sent to IFTTT service
-    data = {'value1': name, 'value2': price}
+    data = {'value1': name, 'value2': price, 'value3': rise_and_fall}
     # inserts our desired event
-    ifttt_event_url = IFTTT_WEBHOOKS_URL.format(event, key)
+    ifttt_event_url = IFTTT_WEBHOOKS_URL.format(event)
     # Sends a HTTP POST request to the webhook URL
     requests.post(ifttt_event_url, json=data)
 
@@ -55,12 +57,13 @@ def format_ico_history(ico_history):
 
 
 def main():
-    ico_history = []
+    dic = {}
     # bitcoin, eos...
-    ico = "eos"
-    key = ""
-    # ico_list = {'eos': 80}
-    last = 2 ** 31
+    eos_dic = {'prices': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190],
+               'i': 7,
+               'history': []}
+    dic['eos'] = eos_dic
+
     rate = 0
     while True:
         tmp = get_curr_rate()
@@ -68,24 +71,46 @@ def main():
             rate = tmp
         if rate == 0:
             continue
-        price = round(get_latest_ico_price() * rate, 2)
-        date = datetime.now()
-        ico_history.append({'date': date, 'price': price})
 
-        # Send an emergency notification
-        if price > EOS_PRICE_THRESHOLD:
-            last = 2 ** 31
-        if price < EOS_PRICE_THRESHOLD < last:
-            post_ifttt_webhook('ico_price_emergency', key, ico, price)
-            last = price
+        for ico in dic:
+            price = round(get_latest_ico_price(ico) * rate, 2)
+            print("现在 %s 的价格为 %s 元" % (ico, price))
+            ico_dic = dic[ico]
+            i = ico_dic['i']
+            if ico_dic['prices'][i] > price > ico_dic['prices'][i - 1]:
+                # print('not change')
+                continue
+            elif price > ico_dic['prices'][i]:
+                dic[ico]['i'] = i + 1
+                # print(price)
+                date = datetime.now()
+                dic[ico]['history'].append({'date': date, 'price': price})
 
-        # Send a Telegram notification
-        # Once we have 5 items in our ico_history send an update
-        if len(ico_history) == 5:
-            post_ifttt_webhook('ico_price_update', key, ico,
-                               format_ico_history(ico_history))
-            # Reset the history
-            ico_history = []
+                # Send an emergency notification
+                post_ifttt_webhook('ico_price_emergency', ico, price, "涨")
+
+                # Send a Telegram notification
+                # Once we have 5 items in our ico history send an update
+                if len(dic[ico]['history']) == 5:
+                    post_ifttt_webhook('ico_price_update', ico, format_ico_history(dic[ico]['history']), "")
+                    # Reset the history
+                    dic[ico]['history'] = []
+
+            elif price < ico_dic['prices'][i - 1]:
+                dic[ico]['i'] = i - 1
+                # print(price)
+                date = datetime.now()
+                dic[ico]['history'].append({'date': date, 'price': price})
+
+                # Send an emergency notification
+                post_ifttt_webhook('ico_price_emergency', ico, price, "跌")
+
+                # Send a Telegram notification
+                # Once we have 5 items in our ico history send an update
+                if len(dic[ico]['history']) == 5:
+                    post_ifttt_webhook('ico_price_update', ico, format_ico_history(dic[ico]['history']), "")
+                    # Reset the history
+                    dic[ico]['history'] = []
 
         # Sleep for 5 minutes
         # (For testing purposes you can set it to a lower number)
