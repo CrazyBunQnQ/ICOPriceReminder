@@ -14,20 +14,29 @@ IFTTT_WEBHOOKS_URL = 'https://maker.ifttt.com/trigger/{}/with/key/%s' % KEY
 def get_curr_rate(scur="USD", tcur="CNY", amount="1"):
     rex = r'(<table class="rate">.*\n.*\n *<tr><td>(\d+)</td><td>(\d+\.\d+)</td><td>(\d+\.\d+)</td>.*</table>)'
     rate_url = "http://qq.ip138.com/hl.asp?from=%s&to=%s&q=%s" % (scur, tcur, amount)
-    response = urllib.request.urlopen(rate_url, timeout=10)
-    html = response.read().decode('gb2312')
-    # print(html)
-    lists = re.findall(rex, html)
-    if len(lists) > 0:
-        return float(lists[0][2])
+    try:
+        response = urllib.request.urlopen(rate_url, timeout=10)
+        html = response.read().decode('gb2312')
+        # print(html)
+        lists = re.findall(rex, html)
+        if len(lists) > 0:
+            return float(lists[0][2])
+        return 0
+    except:
+        print("get rate error")
+        return 0
     return 0
 
 
 def get_latest_ico_price(name="eos"):
-    response = requests.get(ICO_API_URL + name)
-    response_json = response.json()
-    # Convert the price to a floating point number
-    return float(response_json[0]['price_usd'])
+    try:
+        response = requests.get(ICO_API_URL + name)
+        response_json = response.json()
+        # Convert the price to a floating point number
+        return float(response_json[0]['price_usd'])
+    except:
+        print("get price error")
+        return 0
 
 
 def post_ifttt_webhook(event, name, price, rise_and_fall):
@@ -68,6 +77,7 @@ def main():
     # dic['bitcoin'] = bitcoin_dic
 
     rate = 0
+    price = 0
     while True:
         tmp = get_curr_rate()
         if tmp != 0:
@@ -76,7 +86,9 @@ def main():
             continue
 
         for ico in dic:
-            price = round(get_latest_ico_price(ico) * rate, 2)
+            tmp = get_latest_ico_price(ico)
+            if tmp != 0:
+                price = round(tmp * rate, 2)
             print("现在 %s 的价格为 %s 元" % (ico, price))
             ico_dic = dic[ico]
             i = ico_dic['i']
