@@ -3,12 +3,21 @@ import requests
 import time
 import urllib.request
 import re
+import pymysql
 from datetime import datetime
 
-# your IFTTT key
-KEY = ""
-ICO_API_URL = 'https://api.coinmarketcap.com/v1/ticker/'
+# IFTTT Info
+KEY = "your_ifttt_key"
 IFTTT_WEBHOOKS_URL = 'https://maker.ifttt.com/trigger/{}/with/key/%s' % KEY
+# Database information
+DB_HOST = "localhost"
+DB_USER = "root"
+DB_PWD = "your_db_password"
+DB_NAME = "ICO"
+DB_CHARSET = "utf8mb4"
+# Other Setting
+REMINDER_POINT = 0.1
+ICO_API_URL = 'https://api.coinmarketcap.com/v1/ticker/'
 
 
 def get_curr_rate(scur="USD", tcur="CNY", amount="1"):
@@ -64,17 +73,32 @@ def format_ico_history(ico_history):
     return '<br>'.join(rows)
 
 
-def main():
+def query_db_prices():
     dic = {}
-    # bitcoin, eos...Set these to whatever you like
-    # bitcoin_dic = {'prices': [90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190],
-    #                'i': 6,
-    #                'history': []}
-    eos_dic = {'prices': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200],
-               'i': 6,
-               'history': []}
-    dic['eos'] = eos_dic
-    # dic['bitcoin'] = bitcoin_dic
+    db_connect = pymysql.connect(host=DB_HOST, user=DB_USER, passwd=DB_PWD, db=DB_NAME, charset=DB_CHARSET)
+    cursor = db_connect.cursor()
+    sql = "select t.name, t.price from Coin t"
+    cursor.execute(sql)
+    rows = cursor.fetchall()
+    db_connect.close()
+    for row in rows:
+        dic[row[0]] = row[1]
+    return dic
+
+
+def update_db_prices(price):
+    db_connect = pymysql.connect(host=DB_HOST, user=DB_USER, passwd=DB_PWD, db=DB_NAME, charset=DB_CHARSET)
+    cursor = db_connect.cursor()
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    sql = "update Coin t set t.price = " + str(price) + ", t.update_time = '" + now + "'"
+    print(sql)
+    cursor.execute(sql)
+    db_connect.commit()
+    db_connect.close()
+
+
+def main():
+    dic = query_db_prices()
 
     rate = 0
     price = 0
@@ -86,38 +110,28 @@ def main():
             continue
 
         for ico in dic:
-            tmp = get_latest_ico_price(ico)
-            if tmp != 0:
-                price = round(tmp * rate, 2)
+            usd = get_latest_ico_price(ico)
+            if usd != 0:
+                price = round(usd * rate, 2)
             print("现在 %s 的价格为 %s 元" % (ico, price))
-            ico_dic = dic[ico]
-            i = ico_dic['i']
-            if i >= len(ico_dic['prices']):
-                i = len(ico_dic['prices']) - 1
-            if i < 1:
-                i = 1
-            if ico_dic['prices'][i] > price > ico_dic['prices'][i - 1]:
-                print('not change')
-            elif price > ico_dic['prices'][i]:
-                dic[ico]['i'] = i + 1
-                # print(price)
-                # Send an emergency notification
-                post_ifttt_webhook('ico_price_emergency', ico, price, "涨")
 
-            elif price < ico_dic['prices'][i - 1]:
-                dic[ico]['i'] = i - 1
-                # print(price)
-                # Send an emergency notification
-                post_ifttt_webhook('ico_price_emergency', ico, price, "跌")
+            cur_point = (usd - dic[ico]) / dic[ico]
+            if abs(cur_point) > REMINDER_POINT:
+                dic[ico] = usd
+                update_db_prices(usd)
+                if cur_point > 0:
+                    post_ifttt_webhook('ico_price_emergency', ico, price, "涨")
+                else:
+                    post_ifttt_webhook('ico_price_emergency', ico, price, "跌")
 
             # Send a Telegram notification
-            date = datetime.now()
-            dic[ico]['history'].append({'date': date, 'price': price})
+            # date = datetime.now()
+            # dic[ico]['history'].append({'date': date, 'price': price})
             # Once we have 5 items in our ico history send an update
-            if len(dic[ico]['history']) == 5:
-                post_ifttt_webhook('ico_price_update', ico, format_ico_history(dic[ico]['history']), "")
-                # Reset the history
-                dic[ico]['history'] = []
+            # if len(dic[ico]['history']) == 5:
+            #     post_ifttt_webhook('ico_price_update', ico, format_ico_history(dic[ico]['history']), "")
+            #     Reset the history
+            #     dic[ico]['history'] = []
 
         # Sleep for 5 minutes
         # (For testing purposes you can set it to a lower number)
