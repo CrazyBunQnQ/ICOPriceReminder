@@ -48,13 +48,35 @@ def get_latest_ico_price(name="eos"):
         return 0
 
 
-def post_ifttt_webhook(event, name, price, rise_and_fall):
+def post_ifttt_webhook_link(event, title, message, link_url):
     # The payload that will be sent to IFTTT service
-    data = {'value1': name, 'value2': price, 'value3': rise_and_fall}
+    data = {'value1': title, 'value2': message, 'value3': link_url}
     # inserts our desired event
     ifttt_event_url = IFTTT_WEBHOOKS_URL.format(event)
     # Sends a HTTP POST request to the webhook URL
     requests.post(ifttt_event_url, json=data)
+
+
+def post_ifttt_webhook_img(event, title, message, img_url):
+    # The payload that will be sent to IFTTT service
+    data = {'value1': title, 'value2': message, 'value3': img_url}
+    # inserts our desired event
+    ifttt_event_url = IFTTT_WEBHOOKS_URL.format(event)
+    # Sends a HTTP POST request to the webhook URL
+    requests.post(ifttt_event_url, json=data)
+
+
+def send_notice_link(ico, price, rise_and_fall, is_img):
+    title = ico + " 价格变动"
+    message = ico + " 现在" + rise_and_fall + "到 " + str(price) + " 元啦！" + rise_and_fall + "幅 " + str(
+        REMINDER_POINT * 100) + "% !"
+    if is_img:
+        img_url = "https://coinmarketcap.com/currencies/" + ico + "/"
+        post_ifttt_webhook_img("ico_price_emergency", title, message, img_url)
+    else:
+        link_url = "https://coinmarketcap.com/currencies/" + ico + "/"
+        post_ifttt_webhook_link("ico_price_emergency", title, message, link_url)
+    print(message)
 
 
 def query_db_prices():
@@ -104,9 +126,9 @@ def main():
                 dic[ico] = usd
                 update_db_prices(usd)
                 if cur_point > 0:
-                    post_ifttt_webhook('ico_price_emergency', ico, price, "涨")
+                    send_notice_link(ico, price, "涨", False)
                 else:
-                    post_ifttt_webhook('ico_price_emergency', ico, price, "跌")
+                    send_notice_link(ico, price, "跌", False)
 
         # Sleep for 5 minutes
         # (For testing purposes you can set it to a lower number)
