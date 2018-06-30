@@ -26,13 +26,13 @@ def get_curr_rate(scur="USD", tcur="CNY", amount="1"):
     try:
         response = urllib.request.urlopen(rate_url, timeout=10)
         html = response.read().decode('gb2312')
-        # print(html)
+        # print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " " + html)
         lists = re.findall(rex, html)
         if len(lists) > 0:
             return float(lists[0][2])
         return 0
     except:
-        print("get rate error")
+        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " get rate error")
         return 0
     return 0
 
@@ -44,7 +44,7 @@ def get_latest_ico_price(name="eos"):
         # Convert the price to a floating point number
         return float(response_json[0]['price_usd'])
     except:
-        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "get price error")
+        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " get price error")
         return 0
 
 
@@ -100,7 +100,7 @@ def update_db_prices(ico, price):
     cursor = db_connect.cursor()
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     sql = "update Coin t set t.price = " + str(price) + ", t.update_time = '" + now + "' where t.id = '" + ico + "'"
-    # print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + sql)
+    # print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " " + sql)
     cursor.execute(sql)
     db_connect.commit()
     db_connect.close()
@@ -122,7 +122,7 @@ def main():
             usd = get_latest_ico_price(ico)
             if usd != 0:
                 price = round(usd * rate, 2)
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "现在 %s 的价格为 %s 元" % (ico, price))
+            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " 现在 %s 的价格为 %s 元" % (ico, price))
 
             cur_point = (usd - dic[ico]['price']) / dic[ico]['price']
             if abs(cur_point) > REMINDER_POINT:
