@@ -44,7 +44,7 @@ def get_latest_ico_price(name="eos"):
         # Convert the price to a floating point number
         return float(response_json[0]['price_usd'])
     except:
-        print("get price error")
+        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "get price error")
         return 0
 
 
@@ -76,28 +76,31 @@ def send_notice_link(ico, price, rise_and_fall, is_img):
     else:
         link_url = "https://coinmarketcap.com/currencies/" + ico + "/"
         post_ifttt_webhook_link("ico_price_emergency", title, message, link_url)
-    print(message)
+    print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " 发送提醒：" + message)
 
 
 def query_db_prices():
     dic = {}
     db_connect = pymysql.connect(host=DB_HOST, user=DB_USER, passwd=DB_PWD, db=DB_NAME, charset=DB_CHARSET)
     cursor = db_connect.cursor()
-    sql = "select t.name, t.price from Coin t"
+    sql = "select t.id, t.sample_name, t.price from Coin t"
     cursor.execute(sql)
     rows = cursor.fetchall()
     db_connect.close()
     for row in rows:
-        dic[row[0]] = row[1]
+        ico = {}
+        ico['name'] = row[1]
+        ico['price'] = row[2]
+        dic[row[0]] = ico
     return dic
 
 
-def update_db_prices(price):
+def update_db_prices(ico, price):
     db_connect = pymysql.connect(host=DB_HOST, user=DB_USER, passwd=DB_PWD, db=DB_NAME, charset=DB_CHARSET)
     cursor = db_connect.cursor()
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    sql = "update Coin t set t.price = " + str(price) + ", t.update_time = '" + now + "'"
-    print(sql)
+    sql = "update Coin t set t.price = " + str(price) + ", t.update_time = '" + now + "' where t.id = '" + ico + "'"
+    # print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + sql)
     cursor.execute(sql)
     db_connect.commit()
     db_connect.close()
@@ -119,16 +122,16 @@ def main():
             usd = get_latest_ico_price(ico)
             if usd != 0:
                 price = round(usd * rate, 2)
-            print("现在 %s 的价格为 %s 元" % (ico, price))
+            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "现在 %s 的价格为 %s 元" % (ico, price))
 
-            cur_point = (usd - dic[ico]) / dic[ico]
+            cur_point = (usd - dic[ico]['price']) / dic[ico]['price']
             if abs(cur_point) > REMINDER_POINT:
-                dic[ico] = usd
-                update_db_prices(usd)
+                dic[ico]['price'] = usd
+                update_db_prices(ico, usd)
                 if cur_point > 0:
-                    send_notice_link(ico, price, "涨", False)
+                    send_notice_link(dic[ico]['name'], price, "涨", False)
                 else:
-                    send_notice_link(ico, price, "跌", False)
+                    send_notice_link(dic[ico]['name'], price, "跌", False)
 
         # Sleep for 5 minutes
         # (For testing purposes you can set it to a lower number)
