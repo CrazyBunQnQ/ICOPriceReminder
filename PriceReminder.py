@@ -57,22 +57,6 @@ def post_ifttt_webhook(event, name, price, rise_and_fall):
     requests.post(ifttt_event_url, json=data)
 
 
-def format_ico_history(ico_history):
-    rows = []
-    for ico_price in ico_history:
-        # Formats the date into a string: '2018-05-27 15:09'
-        date = ico_price['date'].strftime('%Y-%m-%d %H:%M')
-        price = ico_price['price']
-        # <b> (bold) tag creates bolded text
-        # 2018-05-27 15:09: <b>10123.4</b> RMB
-        row = '{}: <b>{}</b> RMB'.format(date, price)
-        rows.append(row)
-
-    # Use a <br> (break) tag to create a new line
-    # Join the rows delimited by <br> tag: row1<br>row2<br>row3
-    return '<br>'.join(rows)
-
-
 def query_db_prices():
     dic = {}
     db_connect = pymysql.connect(host=DB_HOST, user=DB_USER, passwd=DB_PWD, db=DB_NAME, charset=DB_CHARSET)
@@ -123,15 +107,6 @@ def main():
                     post_ifttt_webhook('ico_price_emergency', ico, price, "涨")
                 else:
                     post_ifttt_webhook('ico_price_emergency', ico, price, "跌")
-
-            # Send a Telegram notification
-            # date = datetime.now()
-            # dic[ico]['history'].append({'date': date, 'price': price})
-            # Once we have 5 items in our ico history send an update
-            # if len(dic[ico]['history']) == 5:
-            #     post_ifttt_webhook('ico_price_update', ico, format_ico_history(dic[ico]['history']), "")
-            #     Reset the history
-            #     dic[ico]['history'] = []
 
         # Sleep for 5 minutes
         # (For testing purposes you can set it to a lower number)
