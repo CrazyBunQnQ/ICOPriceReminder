@@ -1,4 +1,4 @@
-# [![Hello World](https://crazybunqnq.com/love)](https://crazybunqnq.com)
+# [![Hello World](https://avatar.csdn.net/4/F/2/1_fangyangmao.jpg)](https://crazybunqnq.com)
 
 ## 准备工作
 
