@@ -1,3 +1,5 @@
+# [![Awesome](https://cdn.rawgit.com/sindresorhus/awesome/d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg)](https://github.com/sindresorhus/awesome)
+
 ## 准备工作
 
 ### 安装依赖
@@ -22,7 +24,7 @@ pip3 install requests
 
 ## 使用方式
 
-编辑 [PriceReminder.py]() 将顶部的变量改为你自己的信息：IFTTT Key、MySql 数据库、提醒百分点和点击提醒后跳转的页面。
+编辑 [PriceReminder.py](../PriceReminder.py) 将顶部的变量改为你自己的信息：IFTTT Key、MySql 数据库、提醒百分点和点击提醒后跳转的页面。
 
 ```python
 # IFTTT 设置
