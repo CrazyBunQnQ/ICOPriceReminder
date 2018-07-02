@@ -12,7 +12,7 @@ pip3 install requests
 
 脚本使用 mysql 数据库进行持久化，以便脚本中断后上次提醒的数据还在
 
-你可以运行 [`db_update.sql`](db_update.sql)中的脚本来创建数据库，其中可以修改想要提醒的货币内容。
+你可以运行 [`db_update.sql`](../db_update.sql)中的脚本来创建数据库，其中可以修改想要提醒的货币内容。
 
 ### 注册创建 IFTTT 活动
 
