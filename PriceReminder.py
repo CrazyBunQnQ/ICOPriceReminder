@@ -17,6 +17,7 @@ DB_NAME = "ICO"
 DB_CHARSET = "utf8mb4"
 # Other Setting
 REMINDER_POINT = 0.05
+# TODO 改为点击通知打开交易 app
 ICO_API_URL = 'https://api.coinmarketcap.com/v1/ticker/'
 
 
