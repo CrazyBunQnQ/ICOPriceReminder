@@ -16,7 +16,7 @@ DB_PWD = "your_db_password"
 DB_NAME = "ICO"
 DB_CHARSET = "utf8mb4"
 # Other Setting
-REMINDER_POINT = 0.1
+REMINDER_POINT = 0.05
 ICO_API_URL = 'https://api.coinmarketcap.com/v1/ticker/'
 
 
@@ -68,8 +68,13 @@ def post_ifttt_webhook_img(event, title, message, img_url):
 
 def send_notice_link(ico, price, rise_and_fall, is_img):
     title = ico + " 价格变动"
-    message = ico + " 现在" + rise_and_fall + "到 " + str(price) + " 元啦！" + rise_and_fall + "幅 " + str(
-        REMINDER_POINT * 100) + "% !"
+    rise_or_fall = "涨"
+    buy_or_sell = "买入"
+    if rise_and_fall == 0:
+        rise_or_fall = "跌"
+        buy_or_sell = "脱手"
+    message = ico + " 现在" + rise_and_fall + "到 " + str(price) + " 元啦！相对于上次提醒的价格" + rise_or_fall + "了 " + str(
+        REMINDER_POINT * 100) + "% !你要趁现在" + buy_or_sell + "吗?"
     if is_img:
         img_url = "https://coinmarketcap.com/currencies/" + ico + "/"
         post_ifttt_webhook_img("ico_price_emergency", title, message, img_url)
@@ -127,11 +132,12 @@ def main():
             cur_point = (usd - dic[ico]['price']) / dic[ico]['price']
             if abs(cur_point) > REMINDER_POINT:
                 dic[ico]['price'] = usd
-                update_db_prices(ico, usd)
+                if usd != 0:
+                    update_db_prices(ico, usd)
                 if cur_point > 0:
-                    send_notice_link(dic[ico]['name'], price, "涨", False)
+                    send_notice_link(dic[ico]['name'], price, 1, False)
                 else:
-                    send_notice_link(dic[ico]['name'], price, "跌", False)
+                    send_notice_link(dic[ico]['name'], price, 0, False)
 
         # Sleep for 5 minutes
         # (For testing purposes you can set it to a lower number)
