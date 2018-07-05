@@ -22,6 +22,8 @@ pip3 install requests
 
 ## 使用方式
 
+### 修改基本设置
+
 编辑 [PriceReminder.py](../PriceReminder.py) 将顶部的变量改为你自己的信息：IFTTT Key、MySql 数据库、提醒百分点和点击提醒后跳转的页面。
 
 ```python
@@ -40,8 +42,25 @@ REMINDER_POINT = 0.05 # 提醒的百分点
 ICO_API_URL = 'https://api.coinmarketcap.com/v1/ticker/' # 点击通知后跳转的页面
 ```
 
-以上，改好之后就可以运行脚本啦！
+### 设置定时任务
 
 ```bash
-python3 PriceReminder.py
+crontab -e # 编辑定时任务
+# 在定时任务中添加一行如下代码后保存退出
+*/2 * * * * python3.6 PriceReminder.py
+crontab -l # 查看当前的定时任务列表
+service crond start && service crond status # 开启定时任务并查看状态
 ```
+
+>定时任务格式
+>    ```bash
+>    *   *　 *　 *　 *　　命令
+>    # 分钟(0-59)　小时(0-23)　日期(1-31)　月份(1-12)　星期(0-6,0代表星期天)　 命令
+>    # 第1列表示分钟1～59 每分钟用*或者 */1表示
+>    # 第2列表示小时1～23（0表示0点）
+>    # 第3列表示日期1～31
+>    # 第4列表示月份1～12
+>    # 第5列标识号星期0～6（0表示星期天）
+>    ```
+
+以上，完成之后就可以等他每两分钟运行一次脚本啦！
