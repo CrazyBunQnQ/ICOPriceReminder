@@ -1,5 +1,3 @@
-# [![Hello World](https://avatar.csdn.net/4/F/2/1_fangyangmao.jpg)](https://crazybunqnq.com)
-
 ## 准备工作
 
 ### 安装依赖

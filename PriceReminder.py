@@ -1,6 +1,5 @@
 # coding:utf-8
 import requests
-import time
 import urllib.request
 import re
 import pymysql
@@ -114,20 +113,17 @@ def update_db_prices(ico, price):
 
 def main():
     dic = query_db_prices()
-
     rate = 0
-    price = 0
-    while True:
-        tmp = get_curr_rate()
-        if tmp != 0:
-            rate = tmp
+    while rate == 0:
+        rate = get_curr_rate()
         if rate == 0:
             continue
 
         for ico in dic:
-            usd = get_latest_ico_price(ico)
-            if usd != 0:
-                price = round(usd * rate, 2)
+            usd = 0
+            while usd == 0:
+                usd = get_latest_ico_price(ico)
+            price = round(usd * rate, 2)
             print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " 现在 %s 的价格为 %s 元" % (ico, price))
 
             cur_point = (usd - dic[ico]['price']) / dic[ico]['price']
@@ -139,10 +135,6 @@ def main():
                     send_notice_link(dic[ico]['name'], price, 1, False)
                 else:
                     send_notice_link(dic[ico]['name'], price, 0, False)
-
-        # Sleep for 5 minutes
-        # (For testing purposes you can set it to a lower number)
-        time.sleep(5 * 60)
 
 
 if __name__ == '__main__':
