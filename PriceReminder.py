@@ -69,10 +69,10 @@ def post_ifttt_webhook_img(event, title, message, img_url):
 def send_notice_link(ico, price, rise_and_fall, is_img):
     title = ico + " 价格变动"
     rise_or_fall = "涨"
-    buy_or_sell = "买入"
+    buy_or_sell = "脱手"
     if rise_and_fall == 0:
         rise_or_fall = "跌"
-        buy_or_sell = "脱手"
+        buy_or_sell = "买入"
     message = ico + " 现在" + rise_or_fall + "到 " + str(price) + " 元啦！相对于上次提醒的价格" + rise_or_fall + "了 " + str(
         REMINDER_POINT * 100) + "% ！你要趁现在" + buy_or_sell + "吗？"
     if is_img:
