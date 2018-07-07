@@ -18,7 +18,17 @@ pip3 install requests
 
 本脚本通过 [IFTTT](https://ifttt.com/) 进行提醒，用了才知道方便好用！
 
-睡觉咯！有空再补充！
+1. 打开 [IFTTT](https://ifttt.com) 官网，注册账号
+1. 登陆并[创建新的 Applet](https://ifttt.com/create)
+1. 点击大大的蓝色的「+THIS」
+1. 搜索「webhooks」服务，然后选择「Receive a web request」触发
+1. 重命名 event 为你想要的名称，例如 `ico_price_emergency`
+1. 然后点击大大的蓝色的「+that」按钮
+1. 搜索「notifications」服务，然后选择「send a notification from the IFTTT app」
+1. 改变 Title 为`{{Value1}}`，Message 为 `{{Value2}}`，Link URL 为 `{{Value3}}`
+1. 点击 "Finish" 按钮，完成
+1. 打开 [IFTTT webhooks](https://ifttt.com/maker_webhooks)，点击右上角的「Documentation」按钮
+1. Documentation 页有你的 Webhooks 的 URL，包括 Event 和 key，代码中会用到
 
 ## 使用方式
 

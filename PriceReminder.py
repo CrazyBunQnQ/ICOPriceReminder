@@ -8,6 +8,7 @@ from datetime import datetime
 # IFTTT Info
 KEY = "your_ifttt_key"
 IFTTT_WEBHOOKS_URL = 'https://maker.ifttt.com/trigger/{}/with/key/%s' % KEY
+EVENT_NAME = "your_event_name"
 # Database information
 DB_HOST = "localhost"
 DB_USER = "root"
@@ -77,10 +78,10 @@ def send_notice_link(ico, price, rise_and_fall, is_img):
         REMINDER_POINT * 100) + "% ！你要趁现在" + buy_or_sell + "吗？"
     if is_img:
         img_url = "https://coinmarketcap.com/currencies/" + ico + "/"
-        post_ifttt_webhook_img("ico_price_emergency", title, message, img_url)
+        post_ifttt_webhook_img(EVENT_NAME, title, message, img_url)
     else:
         link_url = "https://coinmarketcap.com/currencies/" + ico + "/"
-        post_ifttt_webhook_link("ico_price_emergency", title, message, link_url)
+        post_ifttt_webhook_link(EVENT_NAME, title, message, link_url)
     print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " 发送提醒：" + message)
 
 
