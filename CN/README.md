@@ -1,4 +1,4 @@
-## 准备工作
+## 准备工作****
 
 ### 安装依赖
 
@@ -14,14 +14,14 @@ pip3 install requests
 
 你可以运行 [`db_update.sql`](../db_update.sql)中的脚本来创建数据库，其中可以修改想要提醒的货币内容。
 
-### 注册创建 IFTTT 活动
+### 注册创建IFTTT活动
 
 本脚本通过 [IFTTT](https://ifttt.com/) 进行提醒，用了才知道方便好用！
 
 1. 打开 [IFTTT](https://ifttt.com) 官网，注册账号
 1. 登陆并[创建新的 Applet](https://ifttt.com/create)
 1. 点击大大的蓝色的「+THIS」
-1. 搜索「webhooks」服务，然后选择「Receive a web request」触发
+1. 搜索「Webhooks」服务，然后选择「Receive a web request」触发
 1. 重命名 event 为你想要的名称，例如 `ico_price_emergency`
 1. 然后点击大大的蓝色的「+that」按钮
 1. 搜索「notifications」服务，然后选择「send a notification from the IFTTT app」
@@ -74,3 +74,61 @@ service crond start && service crond status # 开启定时任务并查看状态
 >    ```
 
 以上，完成之后就可以等他每两分钟运行一次脚本啦！
+
+## 代码分析
+
+### 获取当前汇率
+
+使用 `get_curr_rate` 方法可以从 [ip138](http://qq.ip138.com/hl.asp?from=USD&to=CNY&q=1) 网站抓取当前汇率信息
+
+默认为 1 美元兑换人民币的汇率，可以自行修改
+
+### 获取当前货币价格
+
+调用 `get_latest_ico_price` 方法，通过 [https://api.coinmarketcap.com](https://api.coinmarketcap.com/v1/ticker/) 提供的 api 可以获取当前各个货币的信息，也可以在结尾添加货币名称查询指定货币的信息，其中价格信息则是我们需要的
+
+```
+https://api.coinmarketcap.com/v1/ticker/ 
+https://api.coinmarketcap.com/v1/ticker/eos
+```
+
+你会获得类似下面的数据：
+
+```json
+[
+    {
+        "id": "eos",
+        "name": "EOS",
+        "symbol": "EOS",
+        "rank": "5",
+        "price_usd": "8.98341",
+        "price_btc": "0.0013345",
+        "24h_volume_usd": "529859000.0",
+        "market_cap_usd": "8050478309.0",
+        "available_supply": "896149492.0",
+        "total_supply": "900000000.0",
+        "max_supply": "1000000000.0",
+        "percent_change_1h": "-0.53",
+        "percent_change_24h": "3.61",
+        "percent_change_7d": "11.65",
+        "last_updated": "1531030333"
+    },
+    ...
+]
+```
+
+### 发送 IFTTT Webhook 请求
+
+`post_ifttt_webhook_link` 方法会向我们在 [IFTTT](#注册创建IFTTT活动) 上创建的 Applet 发送请求，IFTTT 则会将内容推送到手机端
+
+因为我们在 IFTTT 上标题、信息和连接都写的是变量，所以我们向 IFTTT 发送请求前需要自行把信息拼接好
+
+>其中 `link_url` 为用户点击推送消息时跳转的网页
+
+### 更新数据库提醒记录
+
+每次提醒时通过 `update_db_prices` 将本次提醒的价格存入数据库，方便下次提醒时作对比
+
+### 从数据库查询上一次提醒的价格
+
+通过 `query_db_prices` 方法可以从数据库中查询出上次提醒的价格，通过对比当前价格判断是否给用户推送消息，若超过配置的提醒百分比则推送消息并[更新数据库](#更新数据库提醒记录)
