@@ -15,7 +15,7 @@ This program uses a MySql database. You can run the [`db_update.sql`](db_update.
 1. [Create your applet](https://ifttt.com/create) after signing up for [IFTTT].
 1. Click the big blue「+This」button.
 1. Search for the「Webhooks」service, then select「Receive a web request」.
-1. Rename the「event」for you want to name, for example `ico_price_emergency`
+1. Rename the「event」for you want to name, for example, `ico_price_emergency`
 1. Then click the big blue「+That」button.
 1. Search the「notifications」service and select「send a notification from the IFTTT app」.
 1. Change the「Title」to `{{Value1}}`,「Message」to `{{Value2}}`, the「Link URL」to `{{Value3}}`.
