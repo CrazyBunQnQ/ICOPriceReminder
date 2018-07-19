@@ -87,29 +87,37 @@ def send_notice_link(ico, price, rise_and_fall, is_img):
 
 def query_db_prices():
     dic = {}
-    db_connect = pymysql.connect(host=DB_HOST, user=DB_USER, passwd=DB_PWD, db=DB_NAME, charset=DB_CHARSET)
-    cursor = db_connect.cursor()
-    sql = "select t.id, t.sample_name, t.price from Coin t"
-    cursor.execute(sql)
-    rows = cursor.fetchall()
-    db_connect.close()
-    for row in rows:
-        ico = {}
-        ico['name'] = row[1]
-        ico['price'] = row[2]
-        dic[row[0]] = ico
+    try:
+        db_connect = pymysql.connect(host=DB_HOST, user=DB_USER, passwd=DB_PWD, db=DB_NAME, charset=DB_CHARSET)
+        cursor = db_connect.cursor()
+        sql = "select t.id, t.sample_name, t.price from Coin t"
+        cursor.execute(sql)
+        rows = cursor.fetchall()
+        db_connect.close()
+        for row in rows:
+            ico = {}
+            ico['name'] = row[1]
+            ico['price'] = row[2]
+            dic[row[0]] = ico
+    except:
+        post_ifttt_webhook_link(EVENT_NAME, "价格提醒脚本出错啦！", "数据库查询出错！有空记得检查一下哟！", "")
     return dic
 
 
+
 def update_db_prices(ico, price):
-    db_connect = pymysql.connect(host=DB_HOST, user=DB_USER, passwd=DB_PWD, db=DB_NAME, charset=DB_CHARSET)
-    cursor = db_connect.cursor()
-    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    sql = "update Coin t set t.price = " + str(price) + ", t.update_time = '" + now + "' where t.id = '" + ico + "'"
-    # print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " " + sql)
-    cursor.execute(sql)
-    db_connect.commit()
-    db_connect.close()
+    try:
+        db_connect = pymysql.connect(host=DB_HOST, user=DB_USER, passwd=DB_PWD, db=DB_NAME, charset=DB_CHARSET)
+        cursor = db_connect.cursor()
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        sql = "update Coin t set t.price = " + str(price) + ", t.update_time = '" + now + "' where t.id = '" + ico + "'"
+        # print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " " + sql)
+        cursor.execute(sql)
+        db_connect.commit()
+        db_connect.close()
+    except:
+        post_ifttt_webhook_link(EVENT_NAME, "价格提醒脚本出错啦！", "数据库更新出错！有空记得检查一下哟！", "")
+
 
 
 def main():
