@@ -148,7 +148,7 @@ def main():
                 if times/cur_point > 0:
                     times = times + int(cur_point/abs(cur_point))
                 else:
-                    times = cur_point/abs(cur_point)
+                    times = int(cur_point/abs(cur_point))
                 if usd != 0:
                     update_db_prices(ico, usd, times)
                     send_notice_link(dic[ico]['name'], price, times, False)
