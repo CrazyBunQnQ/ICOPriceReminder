@@ -20,3 +20,4 @@ INSERT INTO `ICO`.`Coin` (`id`, `name`, `sample_name`, `price`, `update_time`) V
 INSERT INTO `ICO`.`Coin` (`id`, `name`, `sample_name`, `price`, `update_time`) VALUES ('binance-coin', 'Binance Coin', 'BNB', DEFAULT, '2018-06-30 15:52:42');
 INSERT INTO `ICO`.`Coin` (`id`, `name`, `sample_name`, `price`, `update_time`) VALUES ('ripple', 'XRP', 'XRP', 1, '2018-06-30 15:48:40');
 
+ALTER TABLE Coin ADD lian_xu int DEFAULT 0 NULL COMMENT '连续涨跌次数';

@@ -17,6 +17,7 @@ DB_NAME = "ICO"
 DB_CHARSET = "utf8mb4"
 # Other Setting
 REMINDER_POINT = 0.05
+LIAN_XU_TIMES = 2
 ICO_API_URL = 'https://api.coinmarketcap.com/v1/ticker/'
 # TODO 添加点击通知打开交易 app
 
@@ -67,15 +68,19 @@ def post_ifttt_webhook_img(event, title, message, img_url):
     requests.post(ifttt_event_url, json=data)
 
 
-def send_notice_link(ico, price, rise_and_fall, is_img):
+def send_notice_link(ico, price, times, is_img):
     title = ico + " 价格变动"
     rise_or_fall = "涨"
     buy_or_sell = "脱手"
-    if rise_and_fall == 0:
+    if times < 0:
         rise_or_fall = "跌"
         buy_or_sell = "买入"
     message = ico + " 现在" + rise_or_fall + "到 " + str(price) + " 元啦！相对于上次提醒的价格" + rise_or_fall + "了 " + str(
-        REMINDER_POINT * 100) + "% ！你要趁现在" + buy_or_sell + "吗？"
+        REMINDER_POINT * 100) + "% ！"
+    if abs(times) >= 2:
+        point = round(abs(times) * REMINDER_POINT * 100, 1)
+        message += "已连续" + rise_or_fall + "了 " + str(point) + "% 啦!!!~ "
+    message += "你要趁现在" + buy_or_sell + "吗？"
     if is_img:
         img_url = "https://coinmarketcap.com/currencies/" + ico + "/"
         post_ifttt_webhook_img(EVENT_NAME, title, message, img_url)
@@ -90,7 +95,7 @@ def query_db_prices():
     try:
         db_connect = pymysql.connect(host=DB_HOST, user=DB_USER, passwd=DB_PWD, db=DB_NAME, charset=DB_CHARSET)
         cursor = db_connect.cursor()
-        sql = "select t.id, t.sample_name, t.price from Coin t"
+        sql = "select t.id, t.sample_name, t.price, t.lian_xu from Coin t"
         cursor.execute(sql)
         rows = cursor.fetchall()
         db_connect.close()
@@ -98,6 +103,7 @@ def query_db_prices():
             ico = {}
             ico['name'] = row[1]
             ico['price'] = row[2]
+            ico['times'] = row[3]
             dic[row[0]] = ico
     except:
         post_ifttt_webhook_link(EVENT_NAME, "价格提醒脚本出错啦！", "数据库查询出错！有空记得检查一下哟！", "")
@@ -105,13 +111,13 @@ def query_db_prices():
 
 
 
-def update_db_prices(ico, price):
+def update_db_prices(ico, price, times):
     try:
         db_connect = pymysql.connect(host=DB_HOST, user=DB_USER, passwd=DB_PWD, db=DB_NAME, charset=DB_CHARSET)
         cursor = db_connect.cursor()
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        sql = "update Coin t set t.price = " + str(price) + ", t.update_time = '" + now + "' where t.id = '" + ico + "'"
-        # print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " " + sql)
+        sql = "update Coin t set t.price = " + str(price) + ", t.update_time = '" + now + "', t.lian_xu = " + str(times) + " where t.id = '" + ico + "'"
+        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " " + sql)
         cursor.execute(sql)
         db_connect.commit()
         db_connect.close()
@@ -138,12 +144,14 @@ def main():
             cur_point = (usd - dic[ico]['price']) / dic[ico]['price']
             if abs(cur_point) > REMINDER_POINT:
                 dic[ico]['price'] = usd
-                if usd != 0:
-                    update_db_prices(ico, usd)
-                if cur_point > 0:
-                    send_notice_link(dic[ico]['name'], price, 1, False)
+                times = dic[ico]['times']
+                if times/cur_point > 0:
+                    times = times + int(cur_point/abs(cur_point))
                 else:
-                    send_notice_link(dic[ico]['name'], price, 0, False)
+                    times = cur_point/abs(cur_point)
+                if usd != 0:
+                    update_db_prices(ico, usd, times)
+                    send_notice_link(dic[ico]['name'], price, times, False)
 
 
 if __name__ == '__main__':
