@@ -19,22 +19,25 @@ DB_CHARSET = "utf8mb4"
 REMINDER_POINT = 0.05
 LIAN_XU_TIMES = 2
 ICO_API_URL = 'https://api.coinmarketcap.com/v1/ticker/'
+
+
 # TODO 添加点击通知打开交易 app
 
 
 def get_curr_rate(scur="USD", tcur="CNY", amount="1"):
-    rex = r'(<table class="rate">.*\n.*\n *<tr><td>(\d+)</td><td>(\d+\.\d+)</td><td>(\d+\.\d+)</td>.*</table>)'
+    rex = r'(<tr><td><p>(\d)+[<>trdp/]+(\d+\.\d+)[<>trdp/]+(\d+\.\d+)</p></td></tr></table>)'
     rate_url = "http://qq.ip138.com/hl.asp?from=%s&to=%s&q=%s" % (scur, tcur, amount)
     try:
         response = urllib.request.urlopen(rate_url, timeout=10)
-        html = response.read().decode('gb2312')
+        html = response.read()
+        html = html.decode('utf-8')
         # print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " " + html)
         lists = re.findall(rex, html)
         if len(lists) > 0:
             return float(lists[0][2])
         return 0
-    except:
-        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " get rate error")
+    except Exception as e:
+        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " get rate error: " + e)
         return 0
     return 0
 
@@ -110,20 +113,19 @@ def query_db_prices():
     return dic
 
 
-
 def update_db_prices(ico, price, times):
     try:
         db_connect = pymysql.connect(host=DB_HOST, user=DB_USER, passwd=DB_PWD, db=DB_NAME, charset=DB_CHARSET)
         cursor = db_connect.cursor()
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        sql = "update Coin t set t.price = " + str(price) + ", t.update_time = '" + now + "', t.lian_xu = " + str(times) + " where t.id = '" + ico + "'"
+        sql = "update Coin t set t.price = " + str(price) + ", t.update_time = '" + now + "', t.lian_xu = " + str(
+            times) + " where t.id = '" + ico + "'"
         print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " " + sql)
         cursor.execute(sql)
         db_connect.commit()
         db_connect.close()
     except:
         post_ifttt_webhook_link(EVENT_NAME, "价格提醒脚本出错啦！", "数据库更新出错！有空记得检查一下哟！", "")
-
 
 
 def main():
@@ -145,10 +147,10 @@ def main():
             if abs(cur_point) > REMINDER_POINT:
                 dic[ico]['price'] = usd
                 times = dic[ico]['times']
-                if times/cur_point > 0:
-                    times = times + int(cur_point/abs(cur_point))
+                if times / cur_point > 0:
+                    times = times + int(cur_point / abs(cur_point))
                 else:
-                    times = int(cur_point/abs(cur_point))
+                    times = int(cur_point / abs(cur_point))
                 if usd != 0:
                     update_db_prices(ico, usd, times)
                     send_notice_link(dic[ico]['name'], price, times, False)
