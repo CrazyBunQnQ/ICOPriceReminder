@@ -18,7 +18,7 @@ DB_CHARSET = "utf8mb4"
 # Other Setting
 REMINDER_POINT = 0.05
 LIAN_XU_TIMES = 2
-ICO_API_URL = 'https://api.coinmarketcap.com/v1/ticker/'
+HUO_BI_API_BASE_URL = 'https://api.huobi.pro'
 
 
 # TODO 添加点击通知打开交易 app
@@ -42,15 +42,16 @@ def get_curr_rate(scur="USD", tcur="CNY", amount="1"):
     return 0
 
 
-def get_latest_ico_price(name="eos"):
-    try:
-        response = requests.get(ICO_API_URL + name)
-        response_json = response.json()
-        # Convert the price to a floating point number
-        return float(response_json[0]['price_usd'])
-    except:
-        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " get price error")
-        return 0
+def get_latest_ico_price(name="btc", fiat="usdt"):
+    url = HUO_BI_API_BASE_URL + "/market/trade?symbol=" + name + fiat
+    # try:
+    response = requests.get(url)
+    response_json = response.json()
+    # Convert the price to a floating point number
+    return float(response_json['tick']['data'][0]['price'])
+# except:
+#     print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " get price error")
+#     return 0
 
 
 def post_ifttt_webhook_link(event, title, message, link_url):
@@ -139,7 +140,7 @@ def main():
         for ico in dic:
             usd = 0
             while usd == 0:
-                usd = get_latest_ico_price(ico)
+                usd = get_latest_ico_price(dic[ico]['name'])
             price = round(usd * rate, 2)
             print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " 现在 %s 的价格为 %s 元" % (ico, price))
 
