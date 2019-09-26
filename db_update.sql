@@ -47,7 +47,7 @@ create table autotrade.strategy_low_buy_high_sell_max
     platform        varchar(15)                                                           not null,
     max_price       decimal(18, 10) default 0                                             not null,
     min_price       decimal(18, 10) default 0                                             not null,
-    reminder_point  float(4, 3)     default 0.021                                         not null comment '提醒百分比：每涨跌该值时进行提醒',
+    reminder_point  float(4, 3)     default 0.007                                         not null comment '提醒百分比：每涨跌该值时进行提醒',
     count_in_a_row  int(3)          default 0                                             not null comment '连续次数',
     trade_spend     decimal(18, 10) default 0                                             not null comment '上次交易实际金额：通过交易后余额与交易前余额做差',
     trade_quantity  decimal(18, 10) default 0                                             not null comment '上次交易实际数量，通过交易后余额与交易前余额做差',

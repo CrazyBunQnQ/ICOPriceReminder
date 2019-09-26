@@ -20,6 +20,8 @@ DB_CHARSET = "utf8mb4"
 LIAN_XU_TIMES = 3
 HUO_BI_API_BASE_URL = 'https://api.huobi.pro'
 getcontext().prec = 10
+SHOW_SQL = False
+IS_TEST = True
 
 
 # TODO 添加点击通知打开交易 app
@@ -61,6 +63,8 @@ def get_latest_ico_price(name="btc", fiat="usdt"):
 
 def post_ifttt_webhook_link(event, title, message, link_url):
     # The payload that will be sent to IFTTT service
+    if IS_TEST:
+        title = "测试：" + title
     data = {'value1': title, 'value2': message, 'value3': link_url}
     # inserts our desired event
     ifttt_event_url = IFTTT_WEBHOOKS_URL.format(event)
@@ -70,6 +74,8 @@ def post_ifttt_webhook_link(event, title, message, link_url):
 
 def post_ifttt_webhook_img(event, title, message, img_url):
     # The payload that will be sent to IFTTT service
+    if IS_TEST:
+        title = "测试：" + title
     data = {'value1': title, 'value2': message, 'value3': img_url}
     # inserts our desired event
     ifttt_event_url = IFTTT_WEBHOOKS_URL.format(event)
@@ -133,7 +139,8 @@ def update_db_prices(symbol_id, last_price, max_price, min_price, times):
         cursor = db_connect.cursor()
         sql = "update autotrade.strategy_low_buy_high_sell_max set trade_avg_price = " + str(last_price) + ", max_price = " + str(max_price) + ", min_price = " + \
               str(min_price) + ", count_in_a_row = " + str(times) + " where id = " + str(symbol_id)
-        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " " + sql)
+        if SHOW_SQL:
+            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " " + sql)
         cursor.execute(sql)
         db_connect.commit()
         db_connect.close()
@@ -141,8 +148,12 @@ def update_db_prices(symbol_id, last_price, max_price, min_price, times):
         post_ifttt_webhook_link(EVENT_NAME, "价格提醒脚本出错啦！", "数据库更新出错！有空记得检查一下哟！" + e, "")
 
 
-def is_rebound_rise(cur_usd, max_price, min_price):
-    return max_price - cur_usd > cur_usd - min_price
+def is_rebound_rise(cur_usd, max_price, min_price, last_price):
+    '是否持续下跌后反涨'
+    if last_price == 0:
+        return max_price - cur_usd > cur_usd - min_price
+    else:
+        return cur_usd < last_price
 
 
 def main():
@@ -207,7 +218,7 @@ def main():
                     print()
 
                 if abs(cur_point) <= reminder_point:
-                    print("cur_point: " + str(cur_point))
+                    print("cur_point: {:.2f}%".format(cur_point * 100))
                     continue
 
                 if last_price == 0:
@@ -215,17 +226,17 @@ def main():
                     # TODO 打开 火币 app 的 url
                     url = ""
                     if isReboundRise:
-                        message = "近期从 " + str(max_price * rate) + " 元跌到 " + str(min_price * rate) + " 元后反涨了 " + str(cur_point) + "(" + str(usd * rate) + " 元)"
+                        message = "近期从 {:.6f} 元跌到 {:.6f} 元后反涨了 {:.2f}%(当前 {:.6f} 元)".format(float(max_price * rate), float(min_price * rate), (cur_point * 100), float(usd * rate))
                         # TODO 进行交易, 获取实际交易金额
                         # TODO 余额不足电话提醒
                         update_db_prices(coin['id'], last_price, usd, usd, 0)
                     else:
-                        message = "近期从 " + str(min_price * rate) + " 元涨到 " + str(max_price) + " 元后反跌了 " + str(cur_point * rate) + "(" + str(usd * rate) + " 元)"
+                        message = "近期从 {:.6f} 元涨到 {:.6f} 元后反跌了 {:.2f}%(当前 {:.6f} 元)".format(float(min_price * rate), float(max_price * rate), (cur_point * 100), float(usd * rate))
                         # TODO 进行交易, 获取实际交易金额
                         # TODO 余额不足电话提醒
                         update_db_prices(coin['id'], last_price, usd, usd, 0)
-                    print(message)
-                    post_ifttt_webhook_img(EVENT_NAME, title, message, url)
+                    print(title + ", " + message)
+                    post_ifttt_webhook_link(EVENT_NAME, title, message, url)
                 else:
                     # TODO 能赚才交易
                     print()
