@@ -6,6 +6,7 @@ import pymysql
 from datetime import datetime
 from decimal import getcontext, Decimal
 from huobi import RequestClient
+from huobi.model import *
 
 # IFTTT Info
 KEY = "your_ifttt_key"
@@ -103,6 +104,64 @@ def send_notice_link(ico, price, reminder_point, times, is_img):
     print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " 发送提醒：" + message)
 
 
+def update_db_account(platform="huobi"):
+    usdt = 0.0
+    usdt_locked = 0.0
+    btc = 0.0
+    btc_locked = 0.0
+    eth = 0.0
+    eth_locked = 0.0
+    eos = 0.0
+    eos_locked = 0.0
+    xrp = 0.0
+    xrp_locked = 0.0
+    spot_balance = HUOBI_CLIENT.get_account_balance_by_account_type(AccountType.SPOT)
+    balances = getattr(spot_balance, 'balances')
+    for i, coin in enumerate(balances):
+        currency = getattr(coin, 'currency')
+        balance_type = getattr(coin, 'balance_type')
+        balance = getattr(coin, 'balance')
+        if currency == 'usdt':
+            if balance_type == 'trade':
+                usdt = balance
+            else:
+                usdt_locked = balance
+        if currency == 'btc':
+            if balance_type == 'trade':
+                btc = balance
+            else:
+                btc_locked = balance
+        if currency == 'eth':
+            if balance_type == 'trade':
+                eth = balance
+            else:
+                eth_locked = balance
+        if currency == 'eos':
+            if balance_type == 'trade':
+                eos = balance
+            else:
+                eos_locked = balance
+        if currency == 'xrp':
+            if balance_type == 'trade':
+                xrp = balance
+            else:
+                xrp_locked = balance
+    try:
+        db_connect = pymysql.connect(host=DB_HOST, user=DB_USER, passwd=DB_PWD, db=DB_NAME, charset=DB_CHARSET)
+        cursor = db_connect.cursor()
+        # language=MySQL
+        sql = "update autotrade.account set usdt = {:f}, usdt_locked = {:f}, btc = {:f}, btc_locked = {:f}, eth = {:f}, eth_locked = {:f}, eos = {:f}, eos_locked = {:f}, xrp = {:f}, xrp_locked = {:f} where platform = '{:s}'".format(
+            usdt, usdt_locked, btc, btc_locked, eth, eth_locked, eos, eos_locked, xrp, xrp_locked, platform)
+        if SHOW_SQL:
+            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " " + sql)
+        cursor.execute(sql)
+        db_connect.commit()
+        db_connect.close()
+    except Exception as e:
+        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " " + str(e))
+        post_ifttt_webhook_link(EVENT_NAME, "价格提醒脚本出错啦！", "数据库更新余额出错！有空记得检查一下哟！" + str(e), "")
+
+
 def query_db_prices():
     dic = {}
     try:
@@ -127,7 +186,8 @@ def query_db_prices():
             ico['trade_avg_price'] = float(row[8])
             dic[row[2] + "_" + row[3]] = ico
     except Exception as e:
-        post_ifttt_webhook_link(EVENT_NAME, "价格提醒脚本出错啦！", "数据库查询出错！有空记得检查一下哟！" + e, "")
+        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " " + str(e))
+        post_ifttt_webhook_link(EVENT_NAME, "价格提醒脚本出错啦！", "数据库查询出错！有空记得检查一下哟！" + str(e), "")
     return dic
 
 
@@ -143,7 +203,8 @@ def update_db_prices(symbol_id, last_price, max_price, min_price, times):
         db_connect.commit()
         db_connect.close()
     except Exception as e:
-        post_ifttt_webhook_link(EVENT_NAME, "价格提醒脚本出错啦！", "数据库更新出错！有空记得检查一下哟！" + e, "")
+        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " " + str(e))
+        post_ifttt_webhook_link(EVENT_NAME, "价格提醒脚本出错啦！", "数据库更新出错！有空记得检查一下哟！" + str(e), "")
 
 
 def is_rebound_rise(cur_usd, max_price, min_price, last_price):
@@ -233,7 +294,10 @@ def main():
 
 
 if __name__ == '__main__':
+    # test
     # print("当前价格相比上次交易价格: {:.1f}, 开始交易...{:s}".format(0.123 * 100, "2"))
+
+    update_db_account()
     # main()
     while True:
         main()
