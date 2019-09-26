@@ -59,11 +59,6 @@ def get_latest_ico_price(name="btc", fiat="usdt"):
     return getattr(obj, 'price')
 
 
-# except:
-#     print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " get price error")
-#     return 0
-
-
 def post_ifttt_webhook_link(event, title, message, link_url):
     # The payload that will be sent to IFTTT service
     if IS_TEST:
