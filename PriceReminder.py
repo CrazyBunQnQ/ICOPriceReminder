@@ -5,6 +5,7 @@ import re
 import pymysql
 from datetime import datetime
 from decimal import getcontext, Decimal
+from huobi import RequestClient
 
 # IFTTT Info
 KEY = "your_ifttt_key"
@@ -12,16 +13,24 @@ IFTTT_WEBHOOKS_URL = 'https://maker.ifttt.com/trigger/{}/with/key/%s' % KEY
 EVENT_NAME = "your_event_name"
 # Database information
 DB_HOST = "localhost"
+DB_NAME = "autotrade"
 DB_USER = "root"
 DB_PWD = "your_db_password"
-DB_NAME = "ICO"
 DB_CHARSET = "utf8mb4"
+
+# Huobi
+API_KEY = "your huobi api key"
+SECRET_KEY = "your huobi secret key"
+HUO_BI_API_BASE_URL = 'https://api.huobi.pro'
+# TODO 打开 火币 app 的 url
+APP_URL = ""
+
 # Other Setting
 LIAN_XU_TIMES = 3
-HUO_BI_API_BASE_URL = 'https://api.huobi.pro'
 getcontext().prec = 10
 SHOW_SQL = False
 IS_TEST = True
+HUOBI_CLIENT = RequestClient(api_key=API_KEY, secret_key=SECRET_KEY)
 
 
 # TODO 添加点击通知打开交易 app
@@ -37,7 +46,7 @@ def get_curr_rate(scur="USD", tcur="CNY", amount="1"):
         # print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " " + html)
         lists = re.findall(rex, html)
         if len(lists) > 0:
-            return Decimal(lists[0][2])
+            return float(lists[0][2])
         return 0
     except Exception as e:
         print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " get rate error: " + str(e))
@@ -45,15 +54,9 @@ def get_curr_rate(scur="USD", tcur="CNY", amount="1"):
 
 
 def get_latest_ico_price(name="btc", fiat="usdt"):
-    url = HUO_BI_API_BASE_URL + "/market/trade?symbol=" + name + fiat
-    try:
-        response = requests.get(url)
-        response_json = response.json()
-        # Convert the price to a floating point number
-        return Decimal(response_json['tick']['data'][0]['price'])
-    except Exception as e:
-        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " get last price error: " + str(e))
-        return 0
+    trades = HUOBI_CLIENT.get_market_trade(symbol=name + fiat)
+    obj = trades[0]
+    return getattr(obj, 'price')
 
 
 # except:
@@ -122,11 +125,11 @@ def query_db_prices():
             ico['symbol'] = row[1]
             ico['coin_name'] = row[2]
             ico['platform'] = row[3]
-            ico['max_price'] = row[4]
-            ico['min_price'] = row[5]
+            ico['max_price'] = float(row[4])
+            ico['min_price'] = float(row[5])
             ico['reminder_point'] = float(row[6])
             ico['count_in_a_row'] = row[7]
-            ico['trade_avg_price'] = row[8]
+            ico['trade_avg_price'] = float(row[8])
             dic[row[2] + "_" + row[3]] = ico
     except Exception as e:
         post_ifttt_webhook_link(EVENT_NAME, "价格提醒脚本出错啦！", "数据库查询出错！有空记得检查一下哟！" + e, "")
@@ -160,8 +163,8 @@ def main():
     dic = query_db_prices()
     rate = 0
     while rate == 0:
-        # rate = get_curr_rate()
-        rate = Decimal(7.123300)
+        rate = get_curr_rate()
+        # rate = 7.123300
         if rate == 0:
             continue
 
@@ -171,7 +174,7 @@ def main():
             while usd == 0:
                 usd = get_latest_ico_price(coin['coin_name'])
 
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " 现在 %s 的价格为 %s 元" % (ico, usd * rate))
+            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " 现在 %s 的价格为 %.6f 元" % (ico, usd * rate))
 
             last_price = coin['trade_avg_price']
             count_in_a_row = coin['count_in_a_row']
@@ -181,41 +184,28 @@ def main():
             reminder_point = coin['reminder_point']
             is_rebound = False
 
-            cur_point = reminder_point - reminder_point
+            cur_point = 0.0
             if usd > max_price:
                 max_price = usd
-                cur_point = float(((usd - min_price) / min_price) if last_price == 0 else ((usd - last_price) / last_price))
+                cur_point = ((usd - min_price) / min_price) if last_price == 0 else ((usd - last_price) / last_price)
                 count_in_a_row = int(cur_point / reminder_point)
                 update_db_prices(coin['id'], last_price, max_price, min_price, count_in_a_row)
             elif usd < min_price:
                 min_price = usd
-                cur_point = float(((usd - max_price) / max_price) if last_price == 0 else ((usd - last_price) / last_price))
+                cur_point = ((usd - max_price) / max_price) if last_price == 0 else ((usd - last_price) / last_price)
                 count_in_a_row = int(cur_point / reminder_point)
                 update_db_prices(coin['id'], last_price, max_price, min_price, count_in_a_row)
             else:
                 is_rebound = True
 
-            if abs(cur_point) > reminder_point:
-                # coin['price'] = usd
-                if count_in_a_row / cur_point > 0:
-                    count_in_a_row = count_in_a_row + int(cur_point / abs(cur_point))
+            if is_rebound:
+                isReboundRise = is_rebound_rise(usd, max_price, min_price, last_price)
+                if isReboundRise:
+                    cur_point = (usd - min_price) / min_price
                 else:
-                    count_in_a_row = int(cur_point / abs(cur_point))
-                if usd != 0:
-                    update_db_prices(coin['id'], last_price, usd, usd, count_in_a_row)
-                    send_notice_link(coin['coin_name'], usd * rate, reminder_point, count_in_a_row, False)
-            elif is_rebound:
-                # 是否反弹, 若反弹判断为提醒百分比的 1/3
-                reminder_point = reminder_point * 1 / 3
-                if last_price == 0:
-                    isReboundRise = is_rebound_rise(usd, max_price, min_price)
-                    if isReboundRise:
-                        cur_point = float((usd - min_price) / min_price)
-                    else:
-                        cur_point = float((max_price - usd) / max_price)
-                else:
-                    # TODO 根据上次交易价格获取涨跌幅度
-                    print()
+                    cur_point = (max_price - usd) / max_price
+                # if last_price == 0:
+                # else:
 
                 if abs(cur_point) <= reminder_point:
                     print("cur_point: {:.2f}%".format(cur_point * 100))
@@ -223,26 +213,32 @@ def main():
 
                 if last_price == 0:
                     title = coin['coin_name'] + "价格反弹了!"
-                    # TODO 打开 火币 app 的 url
-                    url = ""
                     if isReboundRise:
-                        message = "近期从 {:.6f} 元跌到 {:.6f} 元后反涨了 {:.2f}%(当前 {:.6f} 元)".format(float(max_price * rate), float(min_price * rate), (cur_point * 100), float(usd * rate))
-                        # TODO 进行交易, 获取实际交易金额
+                        message = "近期从 {:.6f} 元跌到 {:.6f} 元后反涨了 {:.2f}%(当前 {:.6f} 元)".format(max_price * rate, min_price * rate, (cur_point * 100), usd * rate)
+                        # TODO 进行市价交易, 获取实际交易金额
+                        side = "buy"
                         # TODO 余额不足电话提醒
-                        update_db_prices(coin['id'], last_price, usd, usd, 0)
+                        # TODO 交易成功才重制数据库
+                        # update_db_prices(coin['id'], last_price, usd, usd, 0)
                     else:
-                        message = "近期从 {:.6f} 元涨到 {:.6f} 元后反跌了 {:.2f}%(当前 {:.6f} 元)".format(float(min_price * rate), float(max_price * rate), (cur_point * 100), float(usd * rate))
-                        # TODO 进行交易, 获取实际交易金额
-                        # TODO 余额不足电话提醒
-                        update_db_prices(coin['id'], last_price, usd, usd, 0)
+                        message = "近期从 {:.6f} 元涨到 {:.6f} 元后反跌了 {:.2f}%(当前 {:.6f} 元)".format(min_price * rate, max_price * rate, (cur_point * 100), usd * rate)
+                        # update_db_prices(coin['id'], last_price, usd, usd, 0)
                     print(title + ", " + message)
-                    post_ifttt_webhook_link(EVENT_NAME, title, message, url)
+                    post_ifttt_webhook_link(EVENT_NAME, title, message, APP_URL)
                 else:
                     # TODO 能赚才交易
-                    print()
+                    cur_actual_point = (usd - last_price) / last_price
+                    if abs(cur_actual_point) > reminder_point * 2:
+                        side = "sell" if cur_actual_point > 0 else "buy"
+                        print("当前价格相比上次交易价格: {:.2f}%, 开始交易...{:s}".format(cur_actual_point * 100, side))
+                        # TODO 买入时，跌的越多买的越多，封顶上次交易金额的 2 倍
+                        # TODO 进行市价交易, 获取实际交易金额
+                        # TODO 余额不足电话提醒
+                        # TODO 交易成功才重制数据库
 
 
 if __name__ == '__main__':
+    # print("当前价格相比上次交易价格: {:.1f}, 开始交易...{:s}".format(0.123 * 100, "2"))
     # main()
     while True:
         main()
