@@ -105,16 +105,7 @@ def send_notice_link(ico, price, reminder_point, times, is_img):
 
 
 def update_db_account(platform="huobi"):
-    usdt = 0.0
-    usdt_locked = 0.0
-    btc = 0.0
-    btc_locked = 0.0
-    eth = 0.0
-    eth_locked = 0.0
-    eos = 0.0
-    eos_locked = 0.0
-    xrp = 0.0
-    xrp_locked = 0.0
+    account = {}
     spot_balance = HUOBI_CLIENT.get_account_balance_by_account_type(AccountType.SPOT)
     balances = getattr(spot_balance, 'balances')
     for i, coin in enumerate(balances):
@@ -123,43 +114,46 @@ def update_db_account(platform="huobi"):
         balance = getattr(coin, 'balance')
         if currency == 'usdt':
             if balance_type == 'trade':
-                usdt = balance
+                account['usdt'] = balance
             else:
-                usdt_locked = balance
+                account['usdt_locked'] = balance
         if currency == 'btc':
             if balance_type == 'trade':
-                btc = balance
+                account['btc'] = balance
             else:
-                btc_locked = balance
+                account['btc_locked'] = balance
         if currency == 'eth':
             if balance_type == 'trade':
-                eth = balance
+                account['eth'] = balance
             else:
-                eth_locked = balance
+                account['eth_locked'] = balance
         if currency == 'eos':
             if balance_type == 'trade':
-                eos = balance
+                account['eos'] = balance
             else:
-                eos_locked = balance
+                account['eos_locked'] = balance
         if currency == 'xrp':
             if balance_type == 'trade':
-                xrp = balance
+                account['xrp'] = balance
             else:
-                xrp_locked = balance
+                account['xrp_locked'] = balance
     try:
         db_connect = pymysql.connect(host=DB_HOST, user=DB_USER, passwd=DB_PWD, db=DB_NAME, charset=DB_CHARSET)
         cursor = db_connect.cursor()
         # language=MySQL
         sql = "update autotrade.account set usdt = {:f}, usdt_locked = {:f}, btc = {:f}, btc_locked = {:f}, eth = {:f}, eth_locked = {:f}, eos = {:f}, eos_locked = {:f}, xrp = {:f}, xrp_locked = {:f} where platform = '{:s}'".format(
-            usdt, usdt_locked, btc, btc_locked, eth, eth_locked, eos, eos_locked, xrp, xrp_locked, platform)
+            account['usdt'], account['usdt_locked'], account['btc'], account['btc_locked'], account['eth'], account['eth_locked'], account['eos'], account['eos_locked'], account['xrp'],
+            account['xrp_locked'], platform)
         if SHOW_SQL:
             print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " " + sql)
         cursor.execute(sql)
         db_connect.commit()
         db_connect.close()
+        return account
     except Exception as e:
         print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " " + str(e))
         post_ifttt_webhook_link(EVENT_NAME, "价格提醒脚本出错啦！", "数据库更新余额出错！有空记得检查一下哟！" + str(e), "")
+        return {}
 
 
 def query_db_prices():
