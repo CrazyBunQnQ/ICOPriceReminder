@@ -303,8 +303,8 @@ if __name__ == '__main__':
     # 电话测试
     # post_ifttt_webhook_call_my_phone("Hello", "测试一下中文", "哈哈哈哈")
 
-    orders = HUOBI_CLIENT.get_historical_orders(symbol='btcusdt', order_state='filled')
-    PrintMix.print_data(orders)
+    # orders = HUOBI_CLIENT.get_historical_orders(symbol='btcusdt', order_state='filled')
+    # PrintMix.print_data(orders)
 
     orderObj = HUOBI_CLIENT.get_order(symbol='btcusdt', order_id=49453854888)
     print("获取订单详情: " + (str(49453854888)))

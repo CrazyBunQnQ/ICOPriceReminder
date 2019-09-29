@@ -60,3 +60,22 @@ create table autotrade.strategy_low_buy_high_sell_max
     constraint strategy_low_buy_high_sell_max_pk
         primary key (id)
 );
+
+drop table if exists autotrade.trade_history;
+create table trade_history
+(
+    id          int auto_increment,
+    symbol      varchar(15)                                                    not null,
+    platform    varchar(15)                                                    not null,
+    volume      decimal(18, 10)                                                not null comment '成交总额',
+    quantity    decimal(18, 10)                                                not null comment '成交量',
+    price       decimal(18, 10)                                                not null comment '成交均价',
+    side        varchar(4)                                                     not null comment 'buy 或 sell',
+    create_time datetime default CURRENT_TIMESTAMP                             not null comment '下单时间',
+    finish_time datetime default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP not null comment '完成时间',
+    update_time datetime default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP not null,
+    constraint trade_history_pk
+        primary key (id)
+);
+# ([buysell]{3,4}) ([a-z]+)\n.*\n.*\n.*\n.*\n(\d{2}:\d{2}) (\d{2})/(\d{2})\n.*\n.*\n.*\n.*\n.*\n(\d+\.?\d+)\n(\d+\.?\d+)\n(\d+\.?\d+)
+# INSERT INTO autotrade.trade_history \(id, symbol, platform, volume, quantity, price, side, create_time, finish_time, update_time\) VALUES \(1, '$2', 'huobi', $6, $7, $8, '$1', '2019-$4-$5 $3:00', '2019-$4-$5 $3:00', DEFAULT\);
