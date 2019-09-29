@@ -225,6 +225,7 @@ def main():
     while rate == 0:
         rate = get_curr_rate()
         # rate = 7.123300
+        print("当前 usdt/cny 汇率：{:f}".format(rate))
         if rate == 0:
             continue
 
@@ -236,6 +237,7 @@ def main():
 
             print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " 现在 %s 的价格为 %.6f 元" % (ico, usd * rate))
 
+            # TODO 取最后连续购买的平均价, 空则设为 0
             last_price = coin['trade_avg_price']
             count_in_a_row = coin['count_in_a_row']
             last_count_in_a_row = coin['count_in_a_row']
@@ -287,6 +289,8 @@ def main():
                     post_ifttt_webhook_link(EVENT_NAME, title, message, APP_URL)
                 else:
                     # TODO 能赚才交易
+                    #  购买时比最后连续购买的平均低
+                    #  出售时盈利金额提升即为赚, 盈利金额 = (USDT 余额*汇率 + BTC余额*价格*汇率 + ...) - 投入金额(2w RMB)
                     cur_actual_point = (usd - last_price) / last_price
                     if abs(cur_actual_point) > reminder_point * 2:
                         side = "sell" if cur_actual_point > 0 else "buy"
