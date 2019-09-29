@@ -7,11 +7,14 @@ from datetime import datetime
 from decimal import getcontext, Decimal
 from huobi import RequestClient
 from huobi.model import *
+from huobi.base.printobject import PrintMix
 
 # IFTTT Info
 KEY = "your_ifttt_key"
 IFTTT_WEBHOOKS_URL = 'https://maker.ifttt.com/trigger/{}/with/key/%s' % KEY
 EVENT_NAME = "your_event_name"
+PHONE_EVENT_NAME = "your_event_name"
+
 # Database information
 DB_HOST = "localhost"
 DB_NAME = "autotrade"
@@ -60,6 +63,36 @@ def get_latest_ico_price(name="btc", fiat="usdt"):
     return getattr(obj, 'price')
 
 
+def create_market_order(symbol_name, side, amount):
+    """
+    下市价单并查询订单交易详情
+    amount 市价买单时表示买多少钱, 市价卖单时表示卖多少币
+    """
+    print("开始下单：")
+    # TODO 不同货币保留小数不同
+    order_id = HUOBI_CLIENT.create_order(symbol=symbol_name,
+                                         account_type=AccountType.SPOT,
+                                         order_type=side + "-market",
+                                         # price=price,
+                                         # client_order_id=client_order_id_test,
+                                         # stop_price=12,
+                                         # operator="gte",
+                                         amount=amount)
+    # print("create new order id : " + (str(order_id)) + " with client id " + client_order_id_test)
+    print("下单成功 : " + (str(order_id)))
+    print("\n\n")
+
+    print("获取订单详情: " + (str(order_id)))
+    # 订单完成后返回订单详情
+    orderObj = HUOBI_CLIENT.get_order(symbol=symbol_name, order_id=order_id)
+    orderState = getattr(orderObj, 'state')
+    while orderState == 'filled':
+        orderObj = HUOBI_CLIENT.get_order(symbol=symbol_name, order_id=order_id)
+        orderState = getattr(orderObj, 'state')
+    PrintMix.print_data(orderObj)
+    return orderObj
+
+
 def post_ifttt_webhook_link(event, title, message, link_url):
     # The payload that will be sent to IFTTT service
     if IS_TEST:
@@ -71,37 +104,15 @@ def post_ifttt_webhook_link(event, title, message, link_url):
     requests.post(ifttt_event_url, json=data)
 
 
-def post_ifttt_webhook_img(event, title, message, img_url):
+def post_ifttt_webhook_call_my_phone(title, message, img_url):
     # The payload that will be sent to IFTTT service
     if IS_TEST:
         title = "测试：" + title
     data = {'value1': title, 'value2': message, 'value3': img_url}
     # inserts our desired event
-    ifttt_event_url = IFTTT_WEBHOOKS_URL.format(event)
+    ifttt_event_url = IFTTT_WEBHOOKS_URL.format(PHONE_EVENT_NAME)
     # Sends a HTTP POST request to the webhook URL
     requests.post(ifttt_event_url, json=data)
-
-
-def send_notice_link(ico, price, reminder_point, times, is_img):
-    title = ico + " 价格变动"
-    rise_or_fall = "涨"
-    buy_or_sell = "脱手"
-    if times < 0:
-        rise_or_fall = "跌"
-        buy_or_sell = "买入"
-    message = ico + " 现在" + rise_or_fall + "到 " + str(price) + " 元啦！相对于上次提醒的价格" + rise_or_fall + "了 " + str(
-        reminder_point * 100) + "% ！"
-    if abs(times) >= 2:
-        point = round(abs(times) * reminder_point * 100, 1)
-        message += "已连续" + rise_or_fall + "了 " + str(point) + "% 啦!!!~ "
-    message += "你要趁现在" + buy_or_sell + "吗？"
-    if is_img:
-        img_url = "https://coinmarketcap.com/currencies/" + ico + "/"
-        post_ifttt_webhook_img(EVENT_NAME, title, message, img_url)
-    else:
-        link_url = "https://coinmarketcap.com/currencies/" + ico + "/"
-        post_ifttt_webhook_link(EVENT_NAME, title, message, link_url)
-    print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " 发送提醒：" + message)
 
 
 def update_db_account(platform="huobi"):
@@ -140,7 +151,6 @@ def update_db_account(platform="huobi"):
     try:
         db_connect = pymysql.connect(host=DB_HOST, user=DB_USER, passwd=DB_PWD, db=DB_NAME, charset=DB_CHARSET)
         cursor = db_connect.cursor()
-        # language=MySQL
         sql = "update autotrade.account set usdt = {:f}, usdt_locked = {:f}, btc = {:f}, btc_locked = {:f}, eth = {:f}, eth_locked = {:f}, eos = {:f}, eos_locked = {:f}, xrp = {:f}, xrp_locked = {:f} where platform = '{:s}'".format(
             account['usdt'], account['usdt_locked'], account['btc'], account['btc_locked'], account['eth'], account['eth_locked'], account['eos'], account['eos_locked'], account['xrp'],
             account['xrp_locked'], platform)
@@ -202,7 +212,7 @@ def update_db_prices(symbol_id, last_price, max_price, min_price, times):
 
 
 def is_rebound_rise(cur_usd, max_price, min_price, last_price):
-    '是否持续下跌后反涨'
+    """是否持续下跌后反涨"""
     if last_price == 0:
         return max_price - cur_usd > cur_usd - min_price
     else:
@@ -290,6 +300,15 @@ def main():
 if __name__ == '__main__':
     # test
     # print("当前价格相比上次交易价格: {:.1f}, 开始交易...{:s}".format(0.123 * 100, "2"))
+    # 电话测试
+    # post_ifttt_webhook_call_my_phone("Hello", "测试一下中文", "哈哈哈哈")
+
+    orders = HUOBI_CLIENT.get_historical_orders(symbol='btcusdt', order_state='filled')
+    PrintMix.print_data(orders)
+
+    orderObj = HUOBI_CLIENT.get_order(symbol='btcusdt', order_id=49453854888)
+    print("获取订单详情: " + (str(49453854888)))
+    PrintMix.print_data(orderObj)
 
     update_db_account()
     # main()
