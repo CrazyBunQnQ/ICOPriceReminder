@@ -35,9 +35,14 @@ getcontext().prec = 10
 SHOW_SQL = False
 IS_TEST = True
 HUOBI_CLIENT = RequestClient(api_key=API_KEY, secret_key=SECRET_KEY)
+# TODO 每个币种一个限制，存数据库中
+TOTAL_SPAND_RMB = 20000
 
 
 # TODO 添加点击通知打开交易 app
+
+def get_curr_huobi_rate(scur="USDT", amount="1"):
+    requests.get()
 
 
 def get_curr_rate(scur="USD", tcur="CNY", amount="1"):
@@ -107,15 +112,45 @@ def post_ifttt_webhook_link(event, title, message, link_url):
 def post_ifttt_webhook_call_my_phone(title, message, img_url):
     # The payload that will be sent to IFTTT service
     if IS_TEST:
-        title = "测试：" + title
+        title = "Test：" + title
     data = {'value1': title, 'value2': message, 'value3': img_url}
     # inserts our desired event
     ifttt_event_url = IFTTT_WEBHOOKS_URL.format(PHONE_EVENT_NAME)
     # Sends a HTTP POST request to the webhook URL
-    requests.post(ifttt_event_url, json=data)
+    return requests.post(ifttt_event_url, json=data)
 
 
-def update_db_account(platform="huobi"):
+def query_db_account(platform="huobi"):
+    account = {}
+    try:
+        db_connect = pymysql.connect(host=DB_HOST, user=DB_USER, passwd=DB_PWD, db=DB_NAME, charset=DB_CHARSET)
+        cursor = db_connect.cursor()
+        sql = "select t.* from autotrade.account t where t.platform = '" + platform + "'"
+        cursor.execute(sql)
+        row = cursor.fetchone()
+        db_connect.close()
+        account['id'] = row[0]
+        account['platform'] = row[1]
+        account['usdt'] = float(str(row[2]))
+        account['usdt_locked'] = float(str(row[3]))
+        account['btc'] = float(str(row[4]))
+        account['btc_locked'] = float(str(row[5]))
+        account['eth'] = float(str(row[6]))
+        account['eth_locked'] = float(str(row[7]))
+        account['bnb'] = float(str(row[8]))
+        account['bnb_locked'] = float(str(row[9]))
+        account['eos'] = float(str(row[10]))
+        account['eos_locked'] = float(str(row[11]))
+        account['xrp'] = float(str(row[12]))
+        account['xrp_locked'] = float(str(row[13]))
+        account['cur_profit'] = float(str(row[14]))
+    except Exception as e:
+        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " " + str(e))
+        post_ifttt_webhook_link(EVENT_NAME, "价格提醒脚本出错啦！", "数据库查询账户出错！有空记得检查一下哟！" + str(e), "")
+    return account
+
+
+def update_db_account(platform="huobi", update_profit=False):
     account = {}
     spot_balance = HUOBI_CLIENT.get_account_balance_by_account_type(AccountType.SPOT)
     balances = getattr(spot_balance, 'balances')
@@ -179,7 +214,7 @@ def query_db_prices():
         db_connect.close()
         for row in rows:
             ico = {}
-            ico['id'] = row[0]
+            ico['id'] = float(str(row[0]))
             ico['symbol'] = row[1]
             ico['coin_name'] = row[2]
             ico['platform'] = row[3]
@@ -219,6 +254,13 @@ def is_rebound_rise(cur_usd, max_price, min_price, last_price):
         return cur_usd < last_price
 
 
+def getProfitAmount(account={}, rate=7.1, coin_name='btc', coin_price=0):
+    """获取盈利金额
+    盈利金额 = (USDT 余额*汇率 + BTC余额*价格*汇率 + ...) - 投入金额(2w RMB)
+    """
+    return (account['usdt'] + account['usdt_locked']) * rate + (account[coin_name] + account[coin_name + '_locked']) * coin_price * rate - TOTAL_SPAND_RMB
+
+
 def main():
     dic = query_db_prices()
     rate = 0
@@ -231,6 +273,7 @@ def main():
 
         for ico in dic:
             coin = dic[ico]
+            # 当前价格
             usd = 0
             while usd == 0:
                 usd = get_latest_ico_price(coin['coin_name'])
@@ -291,30 +334,42 @@ def main():
                     # TODO 能赚才交易
                     #  购买时比最后连续购买的平均低
                     #  出售时盈利金额提升即为赚, 盈利金额 = (USDT 余额*汇率 + BTC余额*价格*汇率 + ...) - 投入金额(2w RMB)
+                    account = query_db_account()
+                    # 当前盈利
+                    profit = getProfitAmount(account, rate, coin['coin_name'], usd)
                     cur_actual_point = (usd - last_price) / last_price
                     if abs(cur_actual_point) > reminder_point * 2:
                         side = "sell" if cur_actual_point > 0 else "buy"
                         print("当前价格相比上次交易价格: {:.2f}%, 开始交易...{:s}".format(cur_actual_point * 100, side))
-                        # TODO 买入时，跌的越多买的越多，封顶上次交易金额的 2 倍
+                        # TODO 买入时，跌的越多买的越多，封顶上次交易金额的 2 倍, 并更新盈利金额
                         # TODO 进行市价交易, 获取实际交易金额
                         # TODO 余额不足电话提醒
                         # TODO 交易成功才重制数据库
+                        if side == "sell":
+                            print("")
+                        else:
+                            print("当前价格相比上次交易价格: {:.2f}%, 开始交易...{:s}".format(cur_actual_point * 100, side))
+
 
 
 if __name__ == '__main__':
     # test
     # print("当前价格相比上次交易价格: {:.1f}, 开始交易...{:s}".format(0.123 * 100, "2"))
     # 电话测试
-    # post_ifttt_webhook_call_my_phone("Hello", "测试一下中文", "哈哈哈哈")
+    # while True:
+    # test = post_ifttt_webhook_call_my_phone("Hello", "Test if you can make phone calls in Chinese", "Your balance does not seem to be enough, please recharge it!")
 
-    # orders = HUOBI_CLIENT.get_historical_orders(symbol='btcusdt', order_state='filled')
+    # orders = HUOBI_CLIENT.get_historical_orders(symbol='btcusdt', order_state='filled', order_type='sell-market', start_date='2019-08-14')
     # PrintMix.print_data(orders)
 
-    orderObj = HUOBI_CLIENT.get_order(symbol='btcusdt', order_id=49453854888)
-    print("获取订单详情: " + (str(49453854888)))
-    PrintMix.print_data(orderObj)
+    # orderObj = HUOBI_CLIENT.get_order(symbol='btcusdt', order_id=49453854888)
+    # print("获取订单详情: " + (str(49453854888)))
+    # PrintMix.print_data(orderObj)
 
-    update_db_account()
+    # acc = update_db_account()
+    account = query_db_account()
+    profit = getProfitAmount(account=account, rate=7.073, coin_price=7490.0)
+
     # main()
     while True:
         main()
